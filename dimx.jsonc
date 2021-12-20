@@ -1,0 +1,189 @@
+// Endpoints
+// POST addon/data/import/:addon_uuid/:resource
+// Body
+{
+    "Objects": [],
+
+    // optional
+    // overwrite existing data per object or merge with existing data
+    // default: false
+    "OverwriteObject": true
+}
+
+// result
+{
+    "StatusObjects": [],
+}
+
+// POST addon/data/import/file/:addon_uuid/:resource
+{
+    // a URL to a file containing the data to import
+    // the file content must be a json array of objects
+    // or csv with a header row
+    "URI": "",
+
+    // optional
+    // overwrite existing data per object or merge with existing data
+    // defualt: false
+    "OverwriteObject": true
+}
+
+// Relations
+
+// DataImportResource <- Api Relation
+// This relation is added by adddon that want their resources to be imported
+// The addon can intervene in the import process by have the DIMX import call the addon api
+// The RelativeURL is called by the DIMX import.
+{
+    "RelationName": "DataImportResource",
+
+    // the addon resource for import
+    "Name": "todos",
+
+    // the addon that owns the resource
+    "AddonUUID": "",
+
+    // The URL for transformation of the resource
+    // If the relative URL is empty, the resource is imported without transformation
+    "RelativeURL": "/api/transform_todos",
+
+    // optional
+    // The Resource can define a scheme for the resource
+    // The scheme will be validated on import before calling the relative URL
+    // by default no validation is done
+    // the scheme is also used when importing a csv file
+    "SchemeRelativeURL": "/api/todos_schemes",
+
+    // The name of the DataImportSource that is used to import the data
+    // we assume that for each name there is only one ImportDataSourceRelation
+    "Source": "adal",
+
+    // default is 0.05
+    // minimum is 0
+    // If the addon what to add more than 5% to the data sent to the relative URL,
+    // the addon should up the value of this field
+    "AdditionalDataOverhead": 0.1,
+
+    // define the maxium number of records that can be imported in a single page
+    // the default is 100
+    "MaxPageSize": 100
+}
+
+// the resource interface
+// The DIMX will POST the Relative URL
+// Body:
+{
+    "StatusObjects": [
+        {
+            "Status": "InProgress",
+            "Object": {
+                // the object to import
+            }
+        }
+    ]
+}
+
+// Expected Response:
+{
+    "StatusObjects": [
+        {
+            "Status": "Ignore",
+            "Object": {
+                // the object that was imported
+            }
+        }
+    ]
+}
+
+// the SchemeRelativeURL interface
+// the DIMX will GET the Relative URL
+// The result body should be:
+{
+    "Fields": {
+        "Field1": {
+            "Type": "String|Bool|DateTime|Integer|Double|MultipleStringValues|Object",
+        },
+        "Field2": {
+            "Type": "String|Bool|DateTime|Integer|Double|MultipleStringValues|Object",
+        },
+        "Field3": {
+            // The field is an Object that represents a pepperi resource
+            // the object must include the following fields
+            // AddonUUID: the addon that owns the resource
+            // ResourceName: the name of the resource
+            // the addon must have a DataImportResource relation with the same name
+            "Type": "Resource",
+        },
+        "Field4": {
+            "Type": "Array",
+            "Items": {
+                "Type": "String|Resource",
+            }
+        },
+        "Field5": {
+            // there is no need to define object type
+            // The field is only validated if it has the object type
+            "Type": "Object",
+            "Fields": {
+
+            }
+        }
+    }
+}
+
+// ImportDataSource <- ApiRelation
+// This relation defines a data source that implements the import interface
+{
+    "RelationName": "ImportDataSource",
+
+    // the name of the data source
+    // only one data source can be used per name
+    // ie. there can be only one 'adal' data source
+    "Name": "adal",
+
+    // the addon that implements the data source
+    "AddonUUID": "",
+
+    // the relative URL for the data source import
+    "RelativeURL": "/api/adal_batch",
+
+    // if KeyName exists then all the records must have a property of KeyName
+    // and if they don't the DIMX will fail this record without passing it to the data source
+    "KeyName": "Key",
+
+    // optional
+    // the data source can define a maximum number of records that can be imported in a single page
+    // default is 100
+    "MaxPageSize": 500
+}
+
+// The data source interface
+// The DIMX will POST the Relative URL
+// Body:
+{
+    // the addon that owns the resource
+    "AddonUUID": "",
+
+    // the addon's resource
+    "Resource": "",
+
+    // objects to update
+    "Objects":[],
+
+    // override every object (delete existing data on object)
+    // when this is false the data source must merge the new data with the existing data
+    // does not delete objects that aren't in the Objects array
+    // default is false
+    "OverwriteObject": true,
+}
+
+// expected response
+{
+    // objects that were updated
+    "StatusObjects": [
+        {
+            "Key": "",
+            "Status": "Ignore",
+        }
+    ]
+}
